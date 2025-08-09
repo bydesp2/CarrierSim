@@ -1,171 +1,277 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using System; // System.Math.Tanh
 
 [RequireComponent(typeof(Rigidbody))]
 public class VehicleController : MonoBehaviour
 {
     [Header("Data")]
-    public VehicleData vehicleData;          // Mevcut veri sınıfın (SO değil)
-    public Transform playerPlace;            // Sürücü koltuğu/kamera referansı
+    public VehicleData vehicleData;
+    public Transform playerPlace;
 
     [Header("State")]
-    [Tooltip("Current fuel level (0–1)")]
-    public float currentFuel;
-    [Tooltip("Current vehicle condition (0–1)")]
-    public float condition;
+    [Tooltip("Current fuel level (0–1)")] public float currentFuel = 1f;
+    [Tooltip("Current vehicle condition (0–1)")] public float condition = 1f;
 
-    private Rigidbody rb;
-    public bool isPlayerIn = false;
-
-    // (Opsiyonel) Debug UI
+    [Header("Debug (optional)")]
     public Text throttleTx, steerTx;
 
-    // ---- Input cache (Update'ta dolar, FixedUpdate'ta kullanılır) ----
-    float cachedThrottle; // -1..1
-    float cachedSteer;    // -1..1
-    bool cachedBrake;
+    public bool isPlayerIn = false;
+
+    // --- internal ---
+    Rigidbody rb;
+
+    // steering state (deg)
+    float steerAngleDeg;     // current smoothed steer
+    float targetSteerDeg;    // desired steer
+
+    // cached for weight transfer
+    float prevForwardSpeed;  // m/s (local)
+    float forwardSpeed;      // m/s (local)
+
+    // input cache (Update -> FixedUpdate)
+    float _cachedThrottle;
+    bool _cachedHandbrake;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
 
-        // Tavsiye edilen fizik ayarları (Inspector’dan elle yapman daha iyi):
-        //  - Freeze Rotation Y: OFF (X ve Z ON olabilir)
-        //  - Interpolate: Interpolate (Extrapolate yerine)
-        //  - Automatic Tensor: ON (elle inertia tensor kullanma, şimdilik)
-        rb.centerOfMass = new Vector3(0f, -0.5f, 0f);
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
+        if (rb.angularDrag < 0.05f) rb.angularDrag = 0.05f;
+
+        // Emniyet: yanlış kısıtları uyar
+        if ((rb.constraints & RigidbodyConstraints.FreezePositionZ) != 0)
+            Debug.LogWarning("[VehicleController] Freeze Position Z ON -> araç ileri/geri gidemez. Lütfen kapat.");
+        if ((rb.constraints & RigidbodyConstraints.FreezePositionX) != 0)
+            Debug.LogWarning("[VehicleController] Freeze Position X ON -> yan dinamikler çalışmaz. Lütfen kapat.");
+        if ((rb.constraints & RigidbodyConstraints.FreezeRotationY) != 0)
+            Debug.LogWarning("[VehicleController] Freeze Rotation Y ON -> dönemeyecek. Lütfen kapat.");
+    }
+
+    void Start()
+    {
         if (vehicleData != null)
         {
             currentFuel = vehicleData.fuel;
             condition = vehicleData.condition;
         }
+        prevForwardSpeed = Vector3.Dot(rb.velocity, transform.forward);
+        forwardSpeed = prevForwardSpeed;
     }
 
-    // ---------------- Input ----------------
     void Update()
     {
         if (!isPlayerIn) return;
 
-        cachedSteer = Mathf.Clamp(Input.GetAxisRaw("Horizontal"), -1f, 1f);
-        cachedThrottle = Mathf.Clamp(Input.GetAxisRaw("Vertical"), -1f, 1f);
-        cachedBrake = Input.GetKey(KeyCode.Space);
+        float steerInput = Mathf.Clamp(Input.GetAxisRaw("Horizontal"), -1f, 1f);
+        float throttleInput = Mathf.Clamp(Input.GetAxisRaw("Vertical"), -1f, 1f);
+        bool handbrake = Input.GetKey(KeyCode.Space);
 
-        if (throttleTx) throttleTx.text = cachedThrottle.ToString("F3");
-        if (steerTx) steerTx.text = cachedSteer.ToString("F3");
+        if (throttleTx) throttleTx.text = throttleInput.ToString("F3");
+        if (steerTx) steerTx.text = steerInput.ToString("F3");
+
+        // hız tabanlı maksimum direksiyon (deg)
+        float maxF = Mathf.Max(0.1f, vehicleData.maxSpeed);
+        float speedAbs = Mathf.Abs(Vector3.Dot(rb.velocity, transform.forward));
+        float t = Mathf.Clamp01(speedAbs / maxF);
+        float maxSteerNow = Mathf.Lerp(vehicleData.maxSteerDegLowSpeed, vehicleData.maxSteerDegHighSpeed, t);
+
+        targetSteerDeg = steerInput * maxSteerNow;
+
+        // steer yumuşatma
+        float step = vehicleData.steerSpeedDegPerSec * Time.deltaTime;
+        steerAngleDeg = Mathf.MoveTowards(steerAngleDeg, targetSteerDeg, step);
+
+        // Yakıt & kondisyon: yalnızca pozitif gazda tüket
+        if (throttleInput > 0.05f && currentFuel > 0f && condition > 0f)
+            ConsumeFuelAndCondition(throttleInput);
+
+        // cache -> FixedUpdate
+        _cachedThrottle = throttleInput;
+        _cachedHandbrake = handbrake;
     }
 
-    // --------------- Physics step ---------------
     void FixedUpdate()
     {
-        if (!isPlayerIn) return;
-        Drive(cachedThrottle, cachedSteer, cachedBrake);
-    } 
+        if (!isPlayerIn || vehicleData == null) return;
 
-    // ------------------------------------------------------------
-    // ------------------- HAREKET ÇEKİRDEĞİ ----------------------
-    // ------------------------------------------------------------
-    void Drive(float throttle, float steer, bool brake)
-    {
-        if (vehicleData == null) return;
+        // world -> local hızlar
+        Vector3 vLocal = transform.InverseTransformDirection(rb.velocity);
+        // ileri (+), geri (−). Bölümde 0 patlamasın diye ayrı mutlak kullanalım
+        float vxAbs = Mathf.Max(0.01f, Mathf.Abs(vLocal.z));
+        float vy = vLocal.x;                       // yan hız (local X)
+        float r = rb.angularVelocity.y;           // yaw rate (rad/s)
 
-        // 1) Lokal hız ve hız sınırları
-        Vector3 velLocal = transform.InverseTransformDirection(rb.velocity);
-        float fwdSpeed = velLocal.z; // m/s (+ ileri, - geri)
+        // geometri
+        float wb = Mathf.Max(0.1f, vehicleData.wheelbase);
+        float Lf = Mathf.Clamp(vehicleData.cgToFrontAxle, 0.01f, wb - 0.01f);
+        float Lr = wb - Lf;
+        float h = Mathf.Max(0.05f, vehicleData.cgHeight);
 
-        float maxF = Mathf.Max(0.1f, vehicleData.maxSpeed);
-        float maxR = Mathf.Max(0.1f, vehicleData.maxReverseSpeed);
+        // direksiyon
+        float steerRad = steerAngleDeg * Mathf.Deg2Rad;
 
-        if (velLocal.z > maxF) velLocal.z = maxF;
-        if (velLocal.z < -maxR) velLocal.z = -maxR;
+        // slip açıları (rad)
+        // atan2(vy + L * r, |vx|) − delta
+        float alpha_f = Mathf.Atan2(vy + Lf * r, vxAbs) - steerRad;
+        float alpha_r = Mathf.Atan2(vy - Lr * r, vxAbs);
 
-        rb.velocity = transform.TransformDirection(velLocal);
-        fwdSpeed = velLocal.z;
+        // cornering stiffness
+        float Cf = vehicleData.cornerStiffnessFront;
+        float Cr = vehicleData.cornerStiffnessRear;
 
-        // 2) Direksiyon — hızla ölçeklenmiş yaw (MoveRotation ile)
-        float speedAbs = Mathf.Abs(fwdSpeed);
-        float speedRatio = Mathf.Clamp01(speedAbs / maxF);
-        float steerScale = Mathf.Lerp(vehicleData.steerSlowScale, vehicleData.steerFastScale, speedRatio);
-        float minSteerSpd = Mathf.Max(0f, vehicleData.minSteerSpeed);
+        // handbrake: arka lateral tutuş düşsün (drift tetikleyici)
+        float handMul = _cachedHandbrake ? Mathf.Clamp01(vehicleData.handbrakeGripMul) : 1f;
+        Cr *= handMul;
 
-        if (speedAbs > minSteerSpd && Mathf.Abs(steer) > 0.01f)
+        // slip saturasyon (Pacejka-lite) -> tanh ile yumuşak doyum
+        float satRad = Mathf.Max(1f * Mathf.Deg2Rad, vehicleData.slipAngleLimitDeg * Mathf.Deg2Rad);
+
+        float Fy_f_lin = -Cf * alpha_f;
+        float Fy_r_lin = -Cr * alpha_r;
+
+        float Fy_f = Tanh(alpha_f / satRad) * Mathf.Abs(Fy_f_lin);
+        Fy_f *= -Mathf.Sign(alpha_f);
+
+        float Fy_r = Tanh(alpha_r / satRad) * Mathf.Abs(Fy_r_lin);
+        Fy_r *= -Mathf.Sign(alpha_r);
+
+        // normal yükler (weight transfer)
+        float m = rb.mass;
+        float g = Physics.gravity.magnitude;
+
+        // uzunlamasına ivme tahmini
+        float vForwardNow = vLocal.z;
+        float ax_est = (vForwardNow - prevForwardSpeed) / Mathf.Max(Time.fixedDeltaTime, 0.0001f);
+        prevForwardSpeed = vForwardNow;
+
+        float Nf_static = m * g * (Lr / wb);
+        float Nr_static = m * g * (Lf / wb);
+        float dF = m * ax_est * h / wb;           // +accel -> arka yük artar
+        float Nf = Mathf.Max(0f, Nf_static - dF);
+        float Nr = Mathf.Max(0f, Nr_static + dF);
+
+        // friction circle limiti
+        float mu = Mathf.Max(0.1f, vehicleData.maxGripMu);
+
+        // Longitudinal forces (drive / brake)
+        float throttle = _cachedThrottle;
+        float Fx_f = 0f, Fx_r = 0f;
+
+        bool wantsReverse = (throttle < -0.05f);
+        bool canReverse = Mathf.Abs(vForwardNow) < vehicleData.reverseEngageSpeed;
+
+        // sürüş kuvveti
+        float driveSign = 1f; // ileri
+        if (wantsReverse && canReverse) driveSign = -1f;
+
+        float driveForce = Mathf.Max(0f, vehicleData.engineForce) * Mathf.Max(0f, throttle) * driveSign;
+
+        if (vehicleData.fourWheel)
         {
-            // İleri/geri hissi: hız yönüne göre tersleme (geri viteste doğal)
-            float reverseSign = fwdSpeed >= 0f ? 1f : -1f;
-
-            // hedef açısal hız (rad/sn), Y ekseninde
-            float targetYaw = steer * reverseSign * vehicleData.maxAngularVelocity * steerScale;
-
-            // bu kare döneceğimiz açı (deg)
-            float yawDeg = Mathf.Clamp(targetYaw, -vehicleData.maxAngularVelocity, vehicleData.maxAngularVelocity)
-                           * Mathf.Rad2Deg * Time.fixedDeltaTime;
-
-            // inertia tensor’dan daha az etkilenen güvenli dönüş
-            Quaternion delta = Quaternion.Euler(0f, yawDeg, 0f);
-            rb.MoveRotation(rb.rotation * delta);
+            if (vehicleData.isFWD) Fx_f += driveForce; else Fx_r += driveForce;
         }
         else
         {
-            // Çok yavaşken veya direksiyon bırakıldığında yaw sönümleme (isteğe bağlı)
-            Vector3 av = rb.angularVelocity;
-            av.y = Mathf.MoveTowards(av.y, 0f, rb.angularDrag * Time.fixedDeltaTime);
-            rb.angularVelocity = av;
+            // 2 teker: default arka tahrik
+            Fx_r += driveForce;
         }
 
-        // 3) İleri/Geri ivme — P-controller + doğal yavaşlama + güçlü Auto‑Hold
-        float desiredSpeed = (throttle >= 0f)
-            ? vehicleData.maxSpeed * throttle
-            : vehicleData.maxReverseSpeed * throttle;
+        // fren (geri tuşu > 0 hızda fren, el freni arkaya ilave)
+        float brakeInput = 0f;
+        if (throttle < -0.05f && !canReverse) brakeInput = -throttle;
 
-        float speedError = desiredSpeed - fwdSpeed;
+        float Fb_total = vehicleData.brakeForce * Mathf.Clamp01(brakeInput);
+        float Fb_hand = vehicleData.handbrakeForce * (_cachedHandbrake ? 1f : 0f);
 
-        // Space fren: hızı 0'a çeker
-        if (brake) speedError = -fwdSpeed;
+        float Fb_f = Fb_total * 0.65f;
+        float Fb_r = Fb_total * 0.35f + Fb_hand;
 
-        float accelGain = Mathf.Max(0.01f, vehicleData.accelerationForce);
-        float accelCmd = speedError * accelGain;
+        Fx_f -= Fb_f;
+        Fx_r -= Fb_r;
 
-        // Gaz yoksa doğal yavaşlama (current velocity'e ters)
-        if (Mathf.Approximately(throttle, 0f) && !Mathf.Approximately(fwdSpeed, 0f))
-            accelCmd += -fwdSpeed * Mathf.Max(0f, vehicleData.naturalDrag);
+        // friction circle: (Fx^2 + Fy^2) <= (mu*N)^2
+        Vector2 Ff = FrictionCircleClamp(Fx_f, Fy_f, mu * Nf);
+        Vector2 Fr = FrictionCircleClamp(Fx_r, Fy_r, mu * Nr);
+        Fx_f = Ff.x; Fy_f = Ff.y;
+        Fx_r = Fr.x; Fy_r = Fr.y;
 
-        // Auto‑Hold: gaz yok + küçük hız + fren değilse → ileri/geri bileşeni sabitle
-        const float holdThreshold = 0.10f; // m/s
-        if (Mathf.Approximately(throttle, 0f) && Mathf.Abs(fwdSpeed) < holdThreshold && !brake)
-        {
-            Vector3 v = transform.InverseTransformDirection(rb.velocity);
-            v.z = 0f;
-            rb.velocity = transform.TransformDirection(v);
-        }
-        else
-        {
-            rb.AddForce(transform.forward * accelCmd, ForceMode.Acceleration);
-        }
+        // Aero & rolling (world space)
+        Vector3 vWorld = rb.velocity;
+        Vector3 vDir = vWorld.sqrMagnitude > 0.0001f ? vWorld.normalized : Vector3.zero;
+        Vector3 F_aero = -vehicleData.airDrag * vWorld.sqrMagnitude * vDir;
+        Vector3 F_roll = -vehicleData.rollingResistance * vWorld.magnitude * vDir;
+        Vector3 F_down = -Vector3.up * (vehicleData.downforce * vWorld.sqrMagnitude);
 
-        // 4) Yakıt & kondisyon — sadece gaz verilirken
-        if (Mathf.Abs(throttle) > 0.05f && currentFuel > 0f && condition > 0f)
-            ConsumeFuelAndCondition(Mathf.Abs(throttle));
+        // Force application points (world)
+        Vector3 frontPos = transform.position + transform.forward * Lf;
+        Vector3 rearPos = transform.position - transform.forward * Lr;
+
+        // Ön teker yönleri
+        Quaternion steerRot = Quaternion.Euler(0f, steerAngleDeg, 0f);
+        Vector3 frontDir = steerRot * transform.forward; // long.
+        Vector3 frontRight = steerRot * transform.right;   // lateral (DÜZELTİLDİ)
+
+        // Kuvvetleri world eksenine çevir
+        Vector3 F_front = frontDir * Fx_f + frontRight * Fy_f;
+        Vector3 F_rear = transform.forward * Fx_r + transform.right * Fy_r;
+
+        // Uygula
+        rb.AddForceAtPosition(F_front, frontPos, ForceMode.Force);
+        rb.AddForceAtPosition(F_rear, rearPos, ForceMode.Force);
+
+        // Aero & rolling & downforce
+        rb.AddForce(F_aero + F_roll + F_down, ForceMode.Force);
+
+        // MaxSpeed clamp (oyun tasarımı için güvenlik)
+        LimitForwardSpeed(vehicleData.maxSpeed, vehicleData.maxReverseSpeed);
+
+        // telemetri
+        forwardSpeed = Vector3.Dot(rb.velocity, transform.forward);
     }
 
-    private void ConsumeFuelAndCondition(float throttleAmount)
-    {
-        // vehicleData.fuelPerSecond & conditionDecayRate kullanılır
-        float fuelUse = vehicleData.fuelPerSecond * throttleAmount * Time.fixedDeltaTime;
-        currentFuel = Mathf.Max(currentFuel - fuelUse, 0f);
+    // --- helpers ---
 
-        float condUse = vehicleData.conditionDecayRate * throttleAmount * Time.fixedDeltaTime;
-        condition = Mathf.Max(condition - condUse, 0f);
+    static Vector2 FrictionCircleClamp(float Fx, float Fy, float limit)
+    {
+        float mag = Mathf.Sqrt(Fx * Fx + Fy * Fy);
+        if (mag <= limit || mag < 0.0001f) return new Vector2(Fx, Fy);
+        float s = limit / mag;
+        return new Vector2(Fx * s, Fy * s);
     }
 
-    // ------------------------------------------------------------
-    // ------------------- DİĞERLERİ (değişmedi) ------------------
-    // ------------------------------------------------------------
+    static float Tanh(float x) => (float)System.Math.Tanh(x);
 
-    public void PlayerGetInOut(bool getIn) => isPlayerIn = getIn;
-
-    public void RefillFuel(float refillAmount)
+    void LimitForwardSpeed(float maxF, float maxR)
     {
-        currentFuel = Mathf.Clamp01(currentFuel + refillAmount);
+        Vector3 lv = transform.InverseTransformDirection(rb.velocity);
+        if (lv.z > maxF) lv.z = maxF;
+        if (lv.z < -maxR) lv.z = -maxR;
+        rb.velocity = transform.TransformDirection(lv);
+    }
+
+    void ConsumeFuelAndCondition(float throttleAmount)
+    {
+        float dt = Time.deltaTime;
+        currentFuel = Mathf.Max(0f, currentFuel - vehicleData.fuelPerSecond * throttleAmount * dt);
+        condition = Mathf.Max(0f, condition - vehicleData.conditionDecayRate * throttleAmount * dt);
+    }
+
+    // --- Save/Load & Player enter/exit ---
+
+    public void PlayerGetInOut(bool getIn)
+    {
+        isPlayerIn = getIn;
+
+        if (!getIn)
+        {
+            _cachedThrottle = 0f;
+            _cachedHandbrake = false;
+            targetSteerDeg = 0f;
+        }
     }
 
     public VehicleData GetVehicleSaveData()
@@ -183,10 +289,8 @@ public class VehicleController : MonoBehaviour
         condition = loadData.condition;
         transform.position = loadData.lastPosition;
 
-        if (rb != null)
-        {
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
+        rb.velocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        prevForwardSpeed = 0f;
     }
 }

@@ -18115,15 +18115,19 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Drag
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Mass
-      value: 50
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_AngularDrag
-      value: 0.2
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: m_Constraints
+      value: 80
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_ImplicitCom
@@ -18234,6 +18238,10 @@ PrefabInstance:
       value: 750
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: vehicleData.isFWD
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.speed
       value: 50
       objectReference: {fileID: 0}
@@ -18246,12 +18254,28 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: vehicleData.fourWheel
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.brakeForce
       value: 75
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: vehicleData.naturalDrag
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.fuelPerSecond
       value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: vehicleData.minSteerSpeed
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: vehicleData.steerFastScale
+      value: 0.55
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.steeringTorque
@@ -18263,7 +18287,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.accelerationForce
-      value: 200
+      value: 12
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.conditionDecayRate
@@ -18271,7 +18295,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.maxAngularVelocity
-      value: 4
+      value: 2.2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
