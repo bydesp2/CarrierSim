@@ -18127,7 +18127,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Constraints
-      value: 80
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_ImplicitCom
@@ -18259,7 +18259,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.brakeForce
-      value: 75
+      value: 10000
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.naturalDrag
