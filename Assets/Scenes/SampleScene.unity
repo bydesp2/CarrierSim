@@ -730,7 +730,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 86367107}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -2182,7 +2182,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 258121601}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -3261,7 +3261,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 446391089}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -5687,7 +5687,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 716916952}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -6745,7 +6745,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 832655974}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -7876,7 +7876,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 924460311}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -9198,7 +9198,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1051499299}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -14391,7 +14391,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1757998907}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -17695,7 +17695,7 @@ BoxCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2146432300}
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -18115,19 +18115,19 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Drag
-      value: 0
+      value: 0.08
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Mass
-      value: 100
+      value: 1200
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_AngularDrag
-      value: 0.1
+      value: 0.35
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Constraints
-      value: 0
+      value: 80
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_ImplicitCom
@@ -18139,7 +18139,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_CenterOfMass.y
-      value: -0.5
+      value: -0.3
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_ImplicitTensor
@@ -18164,7 +18164,7 @@ PrefabInstance:
     - target: {fileID: 1558597339681989161, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Material
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 13400000, guid: ace947005df13ec4690f53c633218a91, type: 2}
     - target: {fileID: 2756981248730233175, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Name
       value: Vehicle
@@ -18214,6 +18214,14 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1441892085}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: wheelFL
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: wheelRL
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: turnSpeed
       value: 15
       objectReference: {fileID: 0}
@@ -18247,7 +18255,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.maxSpeed
-      value: 40
+      value: 23
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.condition
@@ -18259,43 +18267,55 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.brakeForce
-      value: 10000
+      value: 15000
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: vehicleData.lateralGrip
+      value: 0.9
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.naturalDrag
-      value: 2
+      value: 2.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: vehicleData.steerAssist
+      value: 2.2
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.fuelPerSecond
-      value: 0.01
+      value: 0.0025
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.minSteerSpeed
-      value: 0.2
+      value: 1.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
+      propertyPath: vehicleData.handbrakeForce
+      value: 20000
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.steerFastScale
-      value: 0.55
+      value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.steeringTorque
-      value: 4
+      value: 1400
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.maxReverseSpeed
-      value: 15
+      value: 7.5
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.accelerationForce
-      value: 12
+      value: 9000
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.conditionDecayRate
-      value: 0.01
+      value: 0.0003
       objectReference: {fileID: 0}
     - target: {fileID: 4954013375343300732, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: vehicleData.maxAngularVelocity
-      value: 2.2
+      value: 2.8
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
