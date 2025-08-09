@@ -18119,11 +18119,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Mass
-      value: 9000
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_AngularDrag
-      value: 2
+      value: 0.2
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_ImplicitCom
@@ -18131,7 +18131,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_Interpolate
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_CenterOfMass.y
@@ -18139,7 +18139,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_ImplicitTensor
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1241763401013019274, guid: 76fc0b082e2df4644930fc7101f19150, type: 3}
       propertyPath: m_InertiaTensor.x
