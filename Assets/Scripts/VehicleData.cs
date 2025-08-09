@@ -16,6 +16,14 @@ public class VehicleData
     public float steeringTorque = 300f;
     public float maxAngularVelocity = 2f;  // rad/s cinsinden, örneðin ~114°/s = 2 rad/s
 
+    [Header("Steering Extra")]
+    public float minSteerSpeed = 0.5f;     // çok yavaþken direksiyon limiti
+    public float steerSlowScale = 1.0f;    // yavaþ hýz direksiyon ölçeði
+    public float steerFastScale = 0.4f;    // yüksek hýz direksiyon ölçeði
+
+    [Header("Drag")]
+    public float naturalDrag = 0.05f;
+
     [Header("Fuel & Condition")]
     [Tooltip("Fuel consumed per second at full throttle")]
     public float fuelPerSecond;
