@@ -5,8 +5,8 @@ using UnityEngine.UI;
 public class VehicleController : MonoBehaviour
 {
     [Header("Data")]
-    public VehicleData vehicleData;          // Mevcut veri sınıfın (ScriptableObject değil)
-    public Transform playerPlace;
+    public VehicleData vehicleData;          // Mevcut veri sınıfın (SO değil)
+    public Transform playerPlace;            // Sürücü koltuğu/kamera referansı
 
     [Header("State")]
     [Tooltip("Current fuel level (0–1)")]
@@ -17,17 +17,22 @@ public class VehicleController : MonoBehaviour
     private Rigidbody rb;
     public bool isPlayerIn = false;
 
-    // --- UI debug (opsiyonel) ---
+    // (Opsiyonel) Debug UI
     public Text throttleTx, steerTx;
 
-    // --- Input cache ---
+    // ---- Input cache (Update'ta dolar, FixedUpdate'ta kullanılır) ----
     float cachedThrottle; // -1..1
     float cachedSteer;    // -1..1
-    bool cachedBrake;    // İstersen boşluk freni ekleyebilirsin
+    bool cachedBrake;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
+
+        // Tavsiye edilen fizik ayarları (Inspector’dan elle yapman daha iyi):
+        //  - Freeze Rotation Y: OFF (X ve Z ON olabilir)
+        //  - Interpolate: Interpolate (Extrapolate yerine)
+        //  - Automatic Tensor: ON (elle inertia tensor kullanma, şimdilik)
         rb.centerOfMass = new Vector3(0f, -0.5f, 0f);
 
         if (vehicleData != null)
@@ -35,13 +40,9 @@ public class VehicleController : MonoBehaviour
             currentFuel = vehicleData.fuel;
             condition = vehicleData.condition;
         }
-
-        // Arcade için önerilen ama zorunlu olmayan ayarlar:
-        // rb.interpolation = RigidbodyInterpolation.Interpolate;
-        // rb.constraints   = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
     }
 
-    // --- Input sadece burada okunur (frame güvenli) ---
+    // ---------------- Input ----------------
     void Update()
     {
         if (!isPlayerIn) return;
@@ -54,11 +55,12 @@ public class VehicleController : MonoBehaviour
         if (steerTx) steerTx.text = cachedSteer.ToString("F3");
     }
 
+    // --------------- Physics step ---------------
     void FixedUpdate()
     {
         if (!isPlayerIn) return;
         Drive(cachedThrottle, cachedSteer, cachedBrake);
-    }
+    } 
 
     // ------------------------------------------------------------
     // ------------------- HAREKET ÇEKİRDEĞİ ----------------------
@@ -67,73 +69,87 @@ public class VehicleController : MonoBehaviour
     {
         if (vehicleData == null) return;
 
-        // 1) Hız ve hız limiti (lokal uzayda)
-        Vector3 velWorld = rb.velocity;
-        Vector3 velLocal = transform.InverseTransformDirection(velWorld);
+        // 1) Lokal hız ve hız sınırları
+        Vector3 velLocal = transform.InverseTransformDirection(rb.velocity);
         float fwdSpeed = velLocal.z; // m/s (+ ileri, - geri)
 
         float maxF = Mathf.Max(0.1f, vehicleData.maxSpeed);
         float maxR = Mathf.Max(0.1f, vehicleData.maxReverseSpeed);
 
-        // Limit uygula (lokalde)
         if (velLocal.z > maxF) velLocal.z = maxF;
         if (velLocal.z < -maxR) velLocal.z = -maxR;
 
-        // Dünyaya geri yaz ve telemetri güncelle
         rb.velocity = transform.TransformDirection(velLocal);
         fwdSpeed = velLocal.z;
 
-        // 2) Direksiyon — hıza bağlı yumuşama + max açısal hız clamp
-        // Hız arttıkça direksiyon etkisini biraz azalt (0..1)
-        float speedRatio = Mathf.Clamp01(Mathf.Abs(fwdSpeed) / maxF);
-        // 1.0 (yavaşken) → 0.4 (maks hıza yakınken) gibi bir ölçek:
-        float steerScale = Mathf.Lerp(1.0f, 0.4f, speedRatio);
+        // 2) Direksiyon — hızla ölçeklenmiş yaw (MoveRotation ile)
+        float speedAbs = Mathf.Abs(fwdSpeed);
+        float speedRatio = Mathf.Clamp01(speedAbs / maxF);
+        float steerScale = Mathf.Lerp(vehicleData.steerSlowScale, vehicleData.steerFastScale, speedRatio);
+        float minSteerSpd = Mathf.Max(0f, vehicleData.minSteerSpeed);
 
-        // Geri giderken yön hissi için küçük bir tersleme:
-        float reverseSign = fwdSpeed >= 0f ? 1f : -1f;
+        if (speedAbs > minSteerSpd && Mathf.Abs(steer) > 0.01f)
+        {
+            // İleri/geri hissi: hız yönüne göre tersleme (geri viteste doğal)
+            float reverseSign = fwdSpeed >= 0f ? 1f : -1f;
 
-        // Hedef açısal hız (rad/sn), Y ekseni
-        float targetYaw = steer * reverseSign * vehicleData.maxAngularVelocity * steerScale;
+            // hedef açısal hız (rad/sn), Y ekseninde
+            float targetYaw = steer * reverseSign * vehicleData.maxAngularVelocity * steerScale;
 
-        // Mevcut açısal hıza yumuşak yaklaş (kritik: ani spin yok)
-        Vector3 av = rb.angularVelocity;
-        float blend = 0.15f + 0.85f * (1f - speedRatio); // yavaşken daha hızlı yaklaş
-        av.y = Mathf.Lerp(av.y, targetYaw, blend);
+            // bu kare döneceğimiz açı (deg)
+            float yawDeg = Mathf.Clamp(targetYaw, -vehicleData.maxAngularVelocity, vehicleData.maxAngularVelocity)
+                           * Mathf.Rad2Deg * Time.fixedDeltaTime;
 
-        // Güvenlik: clamp
-        av.y = Mathf.Clamp(av.y, -vehicleData.maxAngularVelocity, vehicleData.maxAngularVelocity);
-        rb.angularVelocity = av;
+            // inertia tensor’dan daha az etkilenen güvenli dönüş
+            Quaternion delta = Quaternion.Euler(0f, yawDeg, 0f);
+            rb.MoveRotation(rb.rotation * delta);
+        }
+        else
+        {
+            // Çok yavaşken veya direksiyon bırakıldığında yaw sönümleme (isteğe bağlı)
+            Vector3 av = rb.angularVelocity;
+            av.y = Mathf.MoveTowards(av.y, 0f, rb.angularDrag * Time.fixedDeltaTime);
+            rb.angularVelocity = av;
+        }
 
-        // 3) İtiş / Fren — P‑controller ile hedef hız takibi
-        float desiredSpeed =
-            (throttle >= 0f ? vehicleData.maxSpeed * throttle
-                            : vehicleData.maxReverseSpeed * throttle);
+        // 3) İleri/Geri ivme — P-controller + doğal yavaşlama + güçlü Auto‑Hold
+        float desiredSpeed = (throttle >= 0f)
+            ? vehicleData.maxSpeed * throttle
+            : vehicleData.maxReverseSpeed * throttle;
 
         float speedError = desiredSpeed - fwdSpeed;
 
-        // Space frenini istersen aktif et: pozitif/negatif hıza karşı koy
-        if (brake)
-        {
-            // basit fren: hızın tersine bir hedef
-            speedError = -fwdSpeed;
-        }
+        // Space fren: hızı 0'a çeker
+        if (brake) speedError = -fwdSpeed;
 
-        // Kuvveti hesapla (Acc/F = m*a değil; ForceMode.Acceleration ile direkt a veriyoruz)
         float accelGain = Mathf.Max(0.01f, vehicleData.accelerationForce);
         float accelCmd = speedError * accelGain;
 
-        rb.AddForce(transform.forward * accelCmd, ForceMode.Acceleration);
+        // Gaz yoksa doğal yavaşlama (current velocity'e ters)
+        if (Mathf.Approximately(throttle, 0f) && !Mathf.Approximately(fwdSpeed, 0f))
+            accelCmd += -fwdSpeed * Mathf.Max(0f, vehicleData.naturalDrag);
 
-        // 4) Yakıt & kondisyon tüket — yalnızca “etkili gaz” varken
-        if (Mathf.Abs(throttle) > 0.05f && currentFuel > 0f && condition > 0f)
+        // Auto‑Hold: gaz yok + küçük hız + fren değilse → ileri/geri bileşeni sabitle
+        const float holdThreshold = 0.10f; // m/s
+        if (Mathf.Approximately(throttle, 0f) && Mathf.Abs(fwdSpeed) < holdThreshold && !brake)
         {
-            ConsumeFuelAndCondition(Mathf.Abs(throttle));
+            Vector3 v = transform.InverseTransformDirection(rb.velocity);
+            v.z = 0f;
+            rb.velocity = transform.TransformDirection(v);
         }
+        else
+        {
+            rb.AddForce(transform.forward * accelCmd, ForceMode.Acceleration);
+        }
+
+        // 4) Yakıt & kondisyon — sadece gaz verilirken
+        if (Mathf.Abs(throttle) > 0.05f && currentFuel > 0f && condition > 0f)
+            ConsumeFuelAndCondition(Mathf.Abs(throttle));
     }
 
     private void ConsumeFuelAndCondition(float throttleAmount)
     {
-        // NOT: fuelPerSecond ve conditionDecayRate VehicleData içinde
+        // vehicleData.fuelPerSecond & conditionDecayRate kullanılır
         float fuelUse = vehicleData.fuelPerSecond * throttleAmount * Time.fixedDeltaTime;
         currentFuel = Mathf.Max(currentFuel - fuelUse, 0f);
 
@@ -142,13 +158,10 @@ public class VehicleController : MonoBehaviour
     }
 
     // ------------------------------------------------------------
-    // ------------------- DİĞER (DEĞİŞMEDİ) ----------------------
+    // ------------------- DİĞERLERİ (değişmedi) ------------------
     // ------------------------------------------------------------
 
-    public void PlayerGetInOut(bool getIn)
-    {
-        isPlayerIn = getIn;
-    }
+    public void PlayerGetInOut(bool getIn) => isPlayerIn = getIn;
 
     public void RefillFuel(float refillAmount)
     {
@@ -157,26 +170,19 @@ public class VehicleController : MonoBehaviour
 
     public VehicleData GetVehicleSaveData()
     {
-        // Mevcut sisteminle uyumlu: runtime state’i data’ya geri yaz
         vehicleData.fuel = currentFuel;
         vehicleData.condition = condition;
-
-        // Konum kaydı (yüklemede zıplama olmasın diye hafif yukarı)
         vehicleData.lastPosition = transform.position + Vector3.up * 0.1f;
-
         return vehicleData;
     }
 
     public void LoadVehicleFromSaveData(VehicleData loadData)
     {
         vehicleData = loadData;
-
         currentFuel = loadData.fuel;
         condition = loadData.condition;
-
         transform.position = loadData.lastPosition;
 
-        // İstersen mevcut hızları sıfırlayalım ki yüklemede “sıçrama” olmasın:
         if (rb != null)
         {
             rb.velocity = Vector3.zero;
